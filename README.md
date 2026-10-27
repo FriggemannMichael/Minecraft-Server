@@ -63,7 +63,7 @@ The first start creates `data/`, including the world and an active `server.prope
 | `.gitignore` | Keeps local environment files, keys, generated world data, and editor files out of Git. |
 | `.dockerignore` | Excludes local data and unrelated files from the Docker build context. |
 | `.gitattributes` | Keeps shell scripts in LF format for execution in the Linux container. |
-| `.github/workflows/deploy.yml` | Current GitHub Actions workflow that builds the Docker image on pushes and pull requests; it does not deploy to a VM yet. |
+| `.github/workflows/ci.yml` | GitHub Actions workflow that validates Compose, builds the Docker image, and checks a temporary Minecraft server on pushes and pull requests to `main`. |
 | `TODO.md` | Project submission requirements and verification checklist. |
 | `README.md` | Setup, operation, and verification instructions for this repository. |
 
@@ -120,6 +120,8 @@ The service uses `restart: unless-stopped`, so Docker restarts it after an unexp
 To check persistence, change `motd` in `data/server.properties`, restart the service, and verify that the new message and `data/world/level.dat` are still present. Repeat the check after `docker compose up --force-recreate -d mc-server`.
 
 ### Testing
+
+The CI workflow validates the Compose file and builds the image on every push and on pull requests to `main`. It then starts the built image and uses `mcstatus` to check for a Minecraft protocol response on host port `8888`. If the check fails, the workflow shows the container logs. It removes the test container after the check. Deployment to a VM is a separate step and is not part of this workflow.
 
 Check the server locally with the Minecraft Java Edition client at `localhost:8888`, or use the optional [`mcstatus` Python module](https://github.com/py-mine/mcstatus):
 
