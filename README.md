@@ -64,6 +64,7 @@ The first start creates `data/`, including the world and an active `server.prope
 | `.dockerignore` | Excludes local data and unrelated files from the Docker build context. |
 | `.gitattributes` | Keeps shell scripts in LF format for execution in the Linux container. |
 | `.github/workflows/ci.yml` | GitHub Actions workflow that validates Compose, builds the Docker image, and checks a temporary Minecraft server on pushes and pull requests to `main`. |
+| `.github/workflows/quality.yml` | GitHub Actions workflow that checks workflow syntax and scans repository files for exposed secrets on pushes and pull requests to `main`. |
 | `TODO.md` | Project submission requirements and verification checklist. |
 | `README.md` | Setup, operation, and verification instructions for this repository. |
 
@@ -122,6 +123,8 @@ To check persistence, change `motd` in `data/server.properties`, restart the ser
 ### Testing
 
 The CI workflow validates the Compose file and builds the image on every push and on pull requests to `main`. It then starts the built image and uses `mcstatus` to check for a Minecraft protocol response on host port `8888`. If the check fails, the workflow shows the container logs. It removes the test container after the check. Deployment to a VM is a separate step and is not part of this workflow.
+
+The separate Quality workflow runs `actionlint` and Gitleaks on the same events. Findings fail the workflow, and Gitleaks redacts detected values from the logs. Neither workflow needs deployment secrets.
 
 Check the server locally with the Minecraft Java Edition client at `localhost:8888`, or use the optional [`mcstatus` Python module](https://github.com/py-mine/mcstatus):
 
