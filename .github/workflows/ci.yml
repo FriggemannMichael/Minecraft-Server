@@ -1,8 +1,10 @@
 name: Build and test Minecraft server
 
 on:
+  workflow_call:
   push:
-
+    branches:
+      - feature/minecraft_server
   pull_request:
     branches:
       - main

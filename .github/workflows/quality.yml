@@ -1,10 +1,13 @@
 name: Quality
 
 on:
+  workflow_call:
   push:
-
+    branches:
+      - feature/minecraft_server
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
   contents: read

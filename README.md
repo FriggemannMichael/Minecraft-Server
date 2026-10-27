@@ -13,6 +13,7 @@ This repository runs a Minecraft Java Edition 26.3 server in a Docker container.
   - [Run and manage the server](#run-and-manage-the-server)
   - [Persistence and restarts](#persistence-and-restarts)
   - [Testing](#testing)
+  - [Deployment](#deployment)
 - [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
@@ -63,8 +64,9 @@ The first start creates `data/`, including the world and an active `server.prope
 | `.gitignore` | Keeps local environment files, keys, generated world data, and editor files out of Git. |
 | `.dockerignore` | Excludes local data and unrelated files from the Docker build context. |
 | `.gitattributes` | Keeps shell scripts in LF format for execution in the Linux container. |
-| `.github/workflows/ci.yml` | GitHub Actions workflow that validates Compose, builds the Docker image, and checks a temporary Minecraft server on pushes and pull requests to `main`. |
-| `.github/workflows/quality.yml` | GitHub Actions workflow that checks workflow syntax and scans repository files for exposed secrets on pushes and pull requests to `main`. |
+| `.github/workflows/ci.yml` | Validates Compose, builds the Docker image, and checks a temporary Minecraft server on feature-branch pushes and pull requests to `main`; the deployment workflow also calls it on `main` pushes. |
+| `.github/workflows/quality.yml` | Checks workflow syntax and scans repository files for exposed secrets on feature-branch pushes and pull requests to `main`; the deployment workflow also calls it on `main` pushes. |
+| `.github/workflows/deploy.yml` | Runs only on `main` pushes, calls the build and quality checks, then deploys a successful commit to the VM and checks the public Minecraft port. |
 | `TODO.md` | Project submission requirements and verification checklist. |
 | `README.md` | Setup, operation, and verification instructions for this repository. |
 
@@ -122,9 +124,9 @@ To check persistence, change `motd` in `data/server.properties`, restart the ser
 
 ### Testing
 
-The CI workflow validates the Compose file and builds the image on every push and on pull requests to `main`. It then starts the built image and uses `mcstatus` to check for a Minecraft protocol response on host port `8888`. If the check fails, the workflow shows the container logs. It removes the test container after the check. Deployment to a VM is a separate step and is not part of this workflow.
+The CI workflow validates the Compose file, builds the image, and starts it temporarily. It uses `mcstatus` to check for a Minecraft protocol response on host port `8888`. If the check fails, the workflow shows the container logs. It removes the test container after the check.
 
-The separate Quality workflow runs `actionlint` and Gitleaks on the same events. Findings fail the workflow, and Gitleaks redacts detected values from the logs. Neither workflow needs deployment secrets.
+The separate Quality workflow runs `actionlint` and Gitleaks. Findings fail the workflow, and Gitleaks redacts detected values from the logs. Both checks run directly on pushes to `feature/minecraft_server` and on pull requests to `main`. On `main` pushes, the deployment workflow calls both checks before deployment. Neither check needs deployment secrets.
 
 Check the server locally with the Minecraft Java Edition client at `localhost:8888`, or use the optional [`mcstatus` Python module](https://github.com/py-mine/mcstatus):
 
@@ -136,6 +138,12 @@ py -m mcstatus localhost:8888 status
 For a VM, use `<VM_HOST>:8888` instead of `localhost:8888` and verify that the network permits inbound TCP traffic on port `8888`. Check `docker compose ps` and `docker compose logs mc-server` on the VM if the server does not respond.
 
 You can also test the EULA guard by running the built image without `EULA=true`; it should exit with an instruction to accept the EULA. To verify the restart policy, check that the container returns to a running state after its main process terminates unexpectedly.
+
+### Deployment
+
+The deployment workflow runs only on pushes to `main`. It calls the build and quality checks and proceeds to the `production` deployment job only if both succeed. Pull requests and feature-branch pushes do not deploy.
+
+Configure the GitHub Actions secrets `VM_HOST`, `VM_USER`, and `VM_SSH_KEY` for the assigned VM. Do not commit their values or the private key. The workflow copies the checked-out commit to `~/minecraft-server` over SSH, builds and starts `mc-server` with Docker Compose, and checks the server from the runner on port `8888`. It sets `EULA=true`, `PORT=8888`, `MC_XMS=1G`, and `MC_XMX=2G` for the deployment command, so no VM-side `.env` file is needed. The `data/` directory on the VM persists across deployments.
 
 ## Troubleshooting
 
