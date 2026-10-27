@@ -44,6 +44,7 @@ jobs:
           python3 -m venv /tmp/mcstatus-venv
           /tmp/mcstatus-venv/bin/python -m pip install "mcstatus==14.2.0"
           for ATTEMPT in {1..30}; do
+            echo "Checking Minecraft startup (attempt ${ATTEMPT}/30)"
             if /tmp/mcstatus-venv/bin/python -m mcstatus localhost:8888 status; then
               exit 0
             fi
