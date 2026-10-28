@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-
+  workflow_dispatch:
 permissions:
   contents: read
 
@@ -18,7 +18,7 @@ jobs:
   deploy:
     name: Deploy to VM
     needs: [ build, quality ]
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/minecraft_server') }}
     runs-on: ubuntu-24.04
     environment: production
     steps:
