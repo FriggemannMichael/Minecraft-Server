@@ -50,7 +50,7 @@ Run these commands from the repository root in PowerShell:
 
 5. Connect with Minecraft Java Edition to `localhost:8888`. For a VM, connect to `<VM_HOST>:8888` after allowing TCP port `8888` in the VM's firewall and network rules.
 
-The first start creates `data/`, including the world and an active `server.properties` file. Startup can take a little longer while the world is generated.
+The first start creates the `mc-data` volume, including the world and an active `server.properties` file. Startup can take a little longer while the world is generated.
 
 ## Project structure
 
@@ -70,7 +70,7 @@ The first start creates `data/`, including the world and an active `server.prope
 | `TODO.md` | Project submission requirements and verification checklist. |
 | `README.md` | Setup, operation, and verification instructions for this repository. |
 
-The generated `data/` directory and local `.env` file are ignored by Git. Keep world data and local configuration when updating or recreating the container.
+The local `data/` directory and `.env` file are ignored by Git. Keep world data and local configuration when updating or recreating the container.
 
 ## Usage
 
@@ -84,10 +84,15 @@ Compose reads the following variables from `.env` in the repository root:
 | `PORT` | `8888` | TCP port published on the host. The server listens on port `25565` inside the container. |
 | `MC_XMS` | `4G` | Initial Java heap size. |
 | `MC_XMX` | `4G` | Maximum Java heap size. |
+| `MC_MOTD` | Unset | Override `motd` when non-empty. |
+| `MC_MAX_PLAYERS` | Unset | Override `max-players` when non-empty. |
+| `MC_GAMEMODE` | Unset | Override `gamemode` when non-empty. |
+| `MC_DIFFICULTY` | Unset | Override `difficulty` when non-empty. |
 
 For example, setting `PORT=8889` in `.env` changes the address used by clients to `localhost:8889`. Set `MC_XMS=2G` and `MC_XMX=2G` if the host has less memory available, then recreate the service with `docker compose up -d --force-recreate mc-server`.
 
-Edit `data/server.properties` to change live server settings such as `motd`, `max-players`, `gamemode`, or `difficulty`. Then run `docker compose restart mc-server`. The `config/server.properties` file is an initial template: changing it later does not overwrite an existing `data/server.properties`. To change the template for a new world, edit it before the first start.
+Edit `/data/server.properties` in the named volume to change live server settings such as `motd`, `max-players`, `gamemode`, or `difficulty`. Then run `docker compose restart mc-server`. The `config/server.properties` file is an initial template copied into the image: changing it later does not overwrite an existing `/data/server.properties`. To change the template for a new world, edit it before the first build and start.
+Alternatively, set the optional `MC_` overrides in `.env` and recreate `mc-server`; empty values leave the stored settings unchanged.
 
 Keep `online-mode=true` for player authentication. The default configuration disables RCON. Do not put credentials or private keys in this repository.
 
@@ -111,16 +116,17 @@ docker compose restart mc-server
 docker compose down
 ```
 
-Run the commands from the repository root. `docker compose down` stops and removes the container and network; the bind-mounted `data/` directory remains on the host.
+Run the commands from the repository root. `docker compose down` stops and removes the container and network; the named volume remains available.
 Run each command separately; `docker compose logs -f mc-server` keeps showing new log entries until you press `Ctrl+C`.
 
 ### Persistence and restarts
 
-Compose mounts `./data` at `/data` in the container. This directory contains the generated world, active server properties, and other server data. The `./config/server.properties` file is mounted read-only as an initial template.
+Compose mounts `mc-data` at `/data` in the container. This volume contains the generated world, active server properties, and other server data. The `config/server.properties` file is copied into the image as an initial template.
 
-The service uses `restart: unless-stopped`, so Docker restarts it after an unexpected exit while the Docker daemon is running. A normal `docker compose restart mc-server` or container recreation keeps `data/` intact. Back up `data/` before replacing or deleting host files.
+The service uses `restart: unless-stopped`, so Docker restarts it after an unexpected exit while the Docker daemon is running. A normal `docker compose restart mc-server` or container recreation keeps `mc-data` intact. Back up `mc-data` before replacing or deleting server data.
 
-To check persistence, change `motd` in `data/server.properties`, restart the service, and verify that the new message and `data/world/level.dat` are still present. Repeat the check after `docker compose up --force-recreate -d mc-server`.
+To check persistence, change `motd` in `/data/server.properties`, restart the service, and verify that the new message and `/data/world/level.dat` are still present. Repeat the check after `docker compose up --force-recreate -d mc-server`.
+Before the first start with the named volume, stop the old server, back up `./data`, and copy its contents into the volume. Verify both files before removing the old directory.
 
 ### Testing
 
@@ -145,10 +151,12 @@ The deployment workflow runs only on pushes to `main`. It calls the build and qu
 
 Configure the GitHub Actions secrets `VM_HOST`, `VM_USER`, and `VM_SSH_KEY` for the assigned VM. Do not commit their values or the private key. The workflow copies the checked-out commit to `~/minecraft-server` over SSH, builds and starts `mc-server` with Docker Compose, and checks the server from the runner on port `8888`. It sets `EULA=true`, `PORT=8888`, `MC_XMS=1G`, and `MC_XMX=2G` for the deployment command, so no VM-side `.env` file is needed. The `data/` directory on the VM persists across deployments.
 
+Before deploying the named volume, migrate the VM's existing `./data` directory; afterward the active world is stored in the volume.
+
 ## Troubleshooting
 
 - **The container exits immediately:** Confirm that you accepted the Minecraft EULA and set `EULA=true` in `.env`. Check `docker compose logs mc-server` for the exact error.
 - **The published port is unavailable:** Change `PORT` in `.env`, recreate the service, and connect using the new host port.
-- **Server settings do not change:** Edit `data/server.properties`, then restart `mc-server`. The file in `config/` only initializes a missing active configuration.
+- **Server settings do not change:** Edit `/data/server.properties`, then restart `mc-server`; recreate it after changing `.env`. The file in `config/` only initializes a missing active configuration.
 - **The server is unreachable from a VM:** Verify that the service is running, Compose publishes the intended port, and inbound TCP port `8888` is allowed by the VM firewall and cloud network rules.
 - **A build fails while downloading the JAR:** Check the network connection and retry the build. The source is the [official Minecraft server download](https://www.minecraft.net/en-us/download/server); the Docker build checks the downloaded file's SHA-1 value.
