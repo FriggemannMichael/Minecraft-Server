@@ -1,0 +1,17 @@
+name: Check and deploy Minecraft server
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# GitHub requires this workflow on the default branch for manual dispatch.
+# Choose feature/minecraft_server in the Actions UI to run its deploy workflow.
+jobs:
+  placeholder:
+    if: ${{ github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - run: echo "This branch does not contain the deployment workflow."
