@@ -6,6 +6,7 @@ ADD https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3
 RUN echo "${SERVER_SHA1}  /opt/minecraft/minecraft_server.26.3.jar" | sha1sum -c - \
     && mkdir -p /data /config
 
+COPY config/server.properties /opt/minecraft/server.properties
 COPY entrypoint.sh /opt/minecraft/entrypoint.sh
 
 RUN chmod +x /opt/minecraft/entrypoint.sh

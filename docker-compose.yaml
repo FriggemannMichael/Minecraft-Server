@@ -5,10 +5,16 @@ services:
       EULA: ${EULA:-false}
       MC_XMS: ${MC_XMS:-4G}
       MC_XMX: ${MC_XMX:-4G}
+      MC_MOTD: ${MC_MOTD:-}
+      MC_MAX_PLAYERS: ${MC_MAX_PLAYERS:-}
+      MC_GAMEMODE: ${MC_GAMEMODE:-}
+      MC_DIFFICULTY: ${MC_DIFFICULTY:-}
     ports:
       - "${PORT:-8888}:25565"
     volumes:
-      - ./data:/data
-      - ./config/server.properties:/config/server.properties:ro
+      - mc-data:/data
     restart: unless-stopped
     stop_grace_period: 2m
+
+volumes:
+  mc-data:

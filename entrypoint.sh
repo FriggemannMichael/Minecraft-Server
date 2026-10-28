@@ -10,14 +10,20 @@ if [ "${EULA}" != "true" ]; then
   exit 1
 fi
 
-if [ ! -f /config/server.properties ]; then
-  echo "Missing /config/server.properties" >&2
-  exit 1
+if [ ! -f /data/server.properties ]; then
+  cp /opt/minecraft/server.properties /data/server.properties
 fi
 
-if [ ! -f /data/server.properties ]; then
-  cp /config/server.properties /data/server.properties
-fi
+set_property() {
+  PROPERTY_KEY="${1}"
+  PROPERTY_VALUE="$(printf '%s' "${2}" | sed 's/[\\&|]/\\&/g')"
+  sed -i "s|^${PROPERTY_KEY}=.*|${PROPERTY_KEY}=${PROPERTY_VALUE}|" /data/server.properties
+}
+
+if [ -n "${MC_MOTD:-}" ]; then set_property motd "${MC_MOTD}"; fi
+if [ -n "${MC_MAX_PLAYERS:-}" ]; then set_property max-players "${MC_MAX_PLAYERS}"; fi
+if [ -n "${MC_GAMEMODE:-}" ]; then set_property gamemode "${MC_GAMEMODE}"; fi
+if [ -n "${MC_DIFFICULTY:-}" ]; then set_property difficulty "${MC_DIFFICULTY}"; fi
 
 printf 'eula=true\n' > /data/eula.txt
 

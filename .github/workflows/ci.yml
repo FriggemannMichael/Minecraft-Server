@@ -38,7 +38,7 @@ jobs:
 
       - name: Start Minecraft server
         id: start
-        run: docker run --detach --name mc-smoke --publish 8888:25565 --env EULA=true --volume "${GITHUB_WORKSPACE}/config/server.properties:/config/server.properties:ro" minecraft-server:ci
+        run: docker run --detach --name mc-smoke --publish 8888:25565 --env EULA=true minecraft-server:ci
 
       - name: Check server is running
         timeout-minutes: 5
