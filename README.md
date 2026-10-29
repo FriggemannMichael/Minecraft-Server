@@ -25,12 +25,20 @@ This repository runs a Minecraft Java Edition 26.3 server in a Docker container.
 
 ## Quickstart
 
-Run these commands from the repository root in PowerShell:
+Run these commands from the repository root. Step 1 shows PowerShell (Windows) and Bash (Linux/macOS); all other commands work in both shells.
 
 1. Copy the example environment file:
 
+   PowerShell (Windows):
+
    ```powershell
    Copy-Item .env.example .env
+   ```
+
+   Bash (Linux/macOS):
+
+   ```bash                                                                                                                                                                                                                                                                                                        
+   cp .env.example .env                                                                                                                                                                                                                                                                                           
    ```
 
 2. Read and accept the Minecraft EULA, then set `EULA=true` in your local `.env` file.
@@ -39,6 +47,7 @@ Run these commands from the repository root in PowerShell:
    ```powershell
    docker compose up --build -d
    ```
+
 
 4. Watch the startup log until the server reports that it is ready:
 
@@ -136,9 +145,18 @@ The separate Quality workflow runs `actionlint` and Gitleaks. Findings fail the 
 
 Check the server locally with the Minecraft Java Edition client at `localhost:8888`, or use the optional [`mcstatus` Python module](https://github.com/py-mine/mcstatus):
 
+PowerShell (Windows):
+
 ```powershell
 py -m pip install mcstatus
 py -m mcstatus localhost:8888 status
+```
+
+Bash (Linux/macOS):
+
+```bash
+python3 -m pip install mcstatus
+python3 -m mcstatus localhost:8888 status
 ```
 
 For a VM, use `<VM_HOST>:8888` instead of `localhost:8888` and verify that the network permits inbound TCP traffic on port `8888`. Check `docker compose ps` and `docker compose logs mc-server` on the VM if the server does not respond.
