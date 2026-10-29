@@ -1,17 +1,77 @@
 name: Check and deploy Minecraft server
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-
 permissions:
   contents: read
 
-# GitHub requires this workflow on the default branch for manual dispatch.
-# Choose feature/minecraft_server in the Actions UI to run its deploy workflow.
 jobs:
-  placeholder:
-    if: ${{ github.ref != 'refs/heads/main' }}
+  build:
+    uses: ./.github/workflows/ci.yml
+
+  quality:
+    uses: ./.github/workflows/quality.yml
+
+  deploy:
+    name: Deploy to VM
+    needs: [ build, quality ]
+    if: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/minecraft_server') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
+    environment: production
     steps:
-      - run: echo "This branch does not contain the deployment workflow."
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Prepare SSH key
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${VM_SSH_KEY}" > "${HOME}/.ssh/deploy_key"
+          chmod 600 "${HOME}/.ssh/deploy_key"
+
+      - name: Verify SSH connection
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh-keyscan -T 10 -H "${VM_HOST}" >> "${HOME}/.ssh/known_hosts"
+          ssh -i "${HOME}/.ssh/deploy_key" -o BatchMode=yes "${VM_USER}@${VM_HOST}" 'echo "SSH connection established"'
+
+      - name: Copy project to VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          set -euo pipefail
+          tar --exclude='./.git' -czf - . |
+            ssh -i "${HOME}/.ssh/deploy_key" -o BatchMode=yes "${VM_USER}@${VM_HOST}" \
+              'mkdir -p "${HOME}/minecraft-server" && tar -xzf - -C "${HOME}/minecraft-server"'
+
+      - name: Start Minecraft server on VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -i "${HOME}/.ssh/deploy_key" -o BatchMode=yes "${VM_USER}@${VM_HOST}" \
+            'cd "${HOME}/minecraft-server" && EULA=true PORT=8888 MC_XMS=1G MC_XMX=2G docker compose up --build -d mc-server'
+
+      - name: Check deployed server
+        timeout-minutes: 6
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          python3 -m venv /tmp/mcstatus-venv
+          /tmp/mcstatus-venv/bin/python -m pip install "mcstatus==14.2.0"
+          for ATTEMPT in {1..30}; do
+            echo "Checking deployed server (attempt ${ATTEMPT}/30)"
+            if /tmp/mcstatus-venv/bin/python -m mcstatus "${VM_HOST}:8888" status; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Deployed server did not respond on port 8888" >&2
+          exit 1

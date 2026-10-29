@@ -1,0 +1,12 @@
+#Settings and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+#World,Player
+data/
+
+# Local Tooling
+.idea/

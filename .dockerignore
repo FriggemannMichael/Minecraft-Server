@@ -1,0 +1,6 @@
+data/
+.git/
+.env
+.env.*
+*.mp4
+README.md
